@@ -6,7 +6,7 @@ DATASET = "../Dataset/CAMUS/Landmarks_3_10"
 NAME = "CAMUS_NN_dual"
 model_checkpoint = "../Trained/CAMUS_Trains/%s/%s.pth" % (NAME, NAME)
 parameters = json.load(open("../Trained/CAMUS_Trains/%s/hyperparameters.json"%NAME))
-parameters["naive"] = False
+parameters["representation"] = "unified"
 parameters["use_dual"] = True
 parameters["dual"] = True
 

@@ -67,9 +67,12 @@ if __name__ == "__main__":
     parser.add_argument("--use-raster", type=bool, default=True)
     parser.add_argument("--no-raster", dest='use_raster', action='store_false')
     
-    # Use Naive or NonNaive adjacency matrix
-    parser.add_argument("--naive", type=bool, default=True)
-    parser.add_argument("--non-naive", dest='naive', action='store_false')
+    # Graph representation: independent (per-organ graphs) or unified (shared boundaries)
+    parser.add_argument("--representation", choices=["independent", "unified"], default="independent")
+    # Deprecated aliases kept for backward compatibility
+    parser.add_argument("--naive", dest='representation', action='store_const', const='independent')
+    parser.add_argument("--non-naive", dest='representation', action='store_const', const='unified')
+    parser.add_argument("--nonnaive", dest='representation', action='store_const', const='unified')
     
     # Validate every N epochs
     parser.add_argument("--val_every", default=1, type=int)

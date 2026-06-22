@@ -6,6 +6,7 @@ from torch.optim.lr_scheduler import StepLR
 from torch.utils.tensorboard import SummaryWriter
 
 from training.utils import initialize_edge_matrices_and_organ_counts, compute_losses, check_nan
+from models.utils import is_independent, adjacency_data_dir, legacy_naive, normalize_representation
 from losses.dice import OneClassDiceLoss
 from torch.nn import BCELoss 
 import json
@@ -66,7 +67,8 @@ def trainer(train_dataset, val_dataset, model, config, start_epoch=0, start_iter
         "latents": config['latents'],
         "initial_filters": config['initial_filters'],
         "raster_as_input": config['raster_as_input'],
-        "naive": config['naive'],
+        "representation": normalize_representation(config),
+        "naive": legacy_naive(config),
         "use_dual": config['use_dual']
     }
     with open(f"{folder}/hyperparameters.json", "w") as f:
@@ -81,8 +83,9 @@ def trainer(train_dataset, val_dataset, model, config, start_epoch=0, start_iter
     with open(f"{folder}/dataset_config.json", "w") as f:
         json.dump(config_copy, f, indent=4)
         
-    if not config['naive']:
-        with open(f"{DATASET}/NonNaive/organ_order_full.json", "r") as f:
+    if not is_independent(config):
+        adj_path = adjacency_data_dir(DATASET, config['representation'])
+        with open(f"{DATASET}/{adj_path}/organ_order_full.json", "r") as f:
             circ_organ_order = json.load(f)
     else:
         circ_organ_order = None
@@ -186,10 +189,10 @@ def trainer(train_dataset, val_dataset, model, config, start_epoch=0, start_iter
                 # Build the rasterizations for all batches
                 
                 # Rasterize for this batch 
-                if config['naive']:
-                    rasters_pred = model.raster_naive(graph_tensors[0], organ_ids[0], config['inputsize'])
+                if is_independent(config):
+                    rasters_pred = model.raster_independent(graph_tensors[0], organ_ids[0], config['inputsize'])
                 else:
-                    rasters_pred = model.raster_non_naive(graph_tensors[0], organ_ids[0], circ_organ_order, config['inputsize'])
+                    rasters_pred = model.raster_unified(graph_tensors[0], organ_ids[0], circ_organ_order, config['inputsize'])
                                 
                 all_raster_preds = []
                 all_raster_targets = []
@@ -383,10 +386,10 @@ def validate(val_loader, model, config, device, edge_matrices, organ_ids, organ_
             )
             
             # Rasterize for this batch 
-            if config['naive']:
-                rasters_pred = model.raster_naive(graph_tensors[0], organ_ids[0], config['inputsize'])
+            if is_independent(config):
+                rasters_pred = model.raster_independent(graph_tensors[0], organ_ids[0], config['inputsize'])
             else:
-                rasters_pred = model.raster_non_naive(graph_tensors[0], organ_ids[0], circ_organ_order, config['inputsize'])
+                rasters_pred = model.raster_unified(graph_tensors[0], organ_ids[0], circ_organ_order, config['inputsize'])
                 
             # Initialize empty lists to collect predictions and targets
             all_raster_preds = []

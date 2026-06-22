@@ -87,11 +87,11 @@ def create_block_diagonal_matrix(matrices):
 
 def save_matrices(matrices, name, config):
     block_diagonal, organ_id, ordered_keys = create_block_diagonal_matrix(matrices)
-    np.save(f"{config['output_path']}/Naive/adj_{name}_block_diagonal.npy", block_diagonal)
-    np.save(f"{config['output_path']}/Naive/adj_{name}_organ_id.npy", organ_id)
-    np.savetxt(f"{config['output_path']}/Naive/adj_{name}_organ_id.txt", ordered_keys, fmt="%s")
+    np.save(f"{config['output_path']}/Independent/adj_{name}_block_diagonal.npy", block_diagonal)
+    np.save(f"{config['output_path']}/Independent/adj_{name}_organ_id.npy", organ_id)
+    np.savetxt(f"{config['output_path']}/Independent/adj_{name}_organ_id.txt", ordered_keys, fmt="%s")
     json.dump({k: adj.astype('int').tolist() for k, adj in matrices.items()},
-              open(f"{config['output_path']}/Naive/adjacency_matrices_{name}.json", "w"))
+              open(f"{config['output_path']}/Independent/adjacency_matrices_{name}.json", "w"))
 
 def create_sampling_matrix(matrices):
     N1 = np.sum([m.shape[0] for m in matrices.values()])
@@ -108,12 +108,12 @@ def create_sampling_matrix(matrices):
 
 def generate_edge_info(config):
     for block in config["resolutions"]:
-        block_diagonal = np.load(f"{config['output_path']}/Naive/adj_{block}_block_diagonal.npy")
+        block_diagonal = np.load(f"{config['output_path']}/Independent/adj_{block}_block_diagonal.npy")
         edges = np.argwhere(block_diagonal == 1)
         edges = edges[edges[:, 0] < edges[:, 1]]
-        np.save(f"{config['output_path']}/Naive/all_edges_{block}.npy", edges)
+        np.save(f"{config['output_path']}/Independent/all_edges_{block}.npy", edges)
         
-        adjacency_matrices = json.load(open(f"{config['output_path']}/Naive/adjacency_matrices_{block}.json", "r"))
+        adjacency_matrices = json.load(open(f"{config['output_path']}/Independent/adjacency_matrices_{block}.json", "r"))
         N_organs = len(adjacency_matrices.keys())
         M_edges = [np.sum(np.array(adj)) for adj in adjacency_matrices.values()]
         max_edges = np.round(np.max(M_edges) / 2).astype(int)  # Each edge is counted twice in the adjacency matrix
@@ -128,7 +128,7 @@ def generate_edge_info(config):
             edge_matrix[c, edges.shape[0]:, :] = 0
             i += adj.shape[0]
         
-        np.save(f"{config['output_path']}/Naive/edge_matrix_{block}.npy", edge_matrix)
+        np.save(f"{config['output_path']}/Independent/edge_matrix_{block}.npy", edge_matrix)
 
 """    
 def generate_edge_info(config):
@@ -137,14 +137,14 @@ def generate_edge_info(config):
     '''
     for block in config["resolutions"]:
         # Load the unified adjacency matrix
-        block_diagonal = np.load(f"{config['output_path']}/Naive/adj_{block}_block_diagonal.npy")
+        block_diagonal = np.load(f"{config['output_path']}/Independent/adj_{block}_block_diagonal.npy")
         
         # Find all edges in the graph (only keep upper triangular part to avoid double-counting)
         edges = np.argwhere(block_diagonal == 1)
         edges = edges[edges[:, 0] < edges[:, 1]]  # Keep upper triangular only
         
         # Save all edges for reference
-        np.save(f"{config['output_path']}/Naive/edge_matrix_{block}.npy", edges)
+        np.save(f"{config['output_path']}/Independent/edge_matrix_{block}.npy", edges)
         
         print(f"Processed block {block}: Found {len(edges)} edges")
 """

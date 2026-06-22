@@ -6,7 +6,7 @@ DATASET = "../Dataset/Merged/Landmarks_3_10"
 NAME = "HC18"
 model_checkpoint = "../Training/%s/%s.pth" % (NAME, NAME)
 parameters = json.load(open("../Training/%s/hyperparameters.json"%NAME))
-parameters["naive"] = True
+parameters["representation"] = "independent"
 parameters["dual"] = True
 
 image_test_folder = "../Fetal/HC18/training_set"

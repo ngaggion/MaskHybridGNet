@@ -99,6 +99,21 @@ Examples:
 
 *See the paper appendix for detailed configuration system instructions.*
 
+### Graph Representations
+
+Models can be trained with one of two graph representations, selected with the `--representation` flag of `2_Trainer.py` (and `8_Trainer_MSE.py`):
+
+* `independent` (default): each organ is modelled by its own closed contour graph (per-organ block-diagonal adjacency). This is the representation previously referred to as "naive".
+* `unified`: all organs share a single graph with shared boundary nodes. This is the representation previously referred to as "non-naive".
+
+Adjacency matrices and atlas files for newly generated datasets are written to `Independent/` and `Unified/` subfolders inside the dataset directory.
+
+**Backward compatibility.** The legacy nomenclature is still fully supported:
+
+* The deprecated `--naive` / `--non-naive` flags continue to work as aliases for `--representation independent` / `--representation unified`.
+* Checkpoints and `hyperparameters.json` files written by older runs (which only store the boolean `naive` key) load unchanged; the value is mapped to the corresponding representation automatically. New runs additionally store the `naive` flag so older inference scripts keep working.
+* Datasets generated with the old `Naive/` and `NonNaive/` folder layout are still read directly. When both the new and legacy folders are present, the new `Independent/` / `Unified/` folders take precedence.
+
 ## Project Structure
 
 ```text

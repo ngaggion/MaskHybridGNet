@@ -46,6 +46,13 @@ if __name__ == "__main__":
     # Seg-to-Graph parameters
     parser.add_argument("--raster-as-input", type=bool, default=False)
     parser.add_argument("--raster-input", dest='raster_as_input', action='store_true')
+
+    # Graph representation: independent (per-organ graphs) or unified (shared boundaries)
+    parser.add_argument("--representation", choices=["independent", "unified"], default="independent")
+    # Deprecated aliases kept for backward compatibility
+    parser.add_argument("--naive", dest='representation', action='store_const', const='independent')
+    parser.add_argument("--non-naive", dest='representation', action='store_const', const='unified')
+    parser.add_argument("--nonnaive", dest='representation', action='store_const', const='unified')
     
     args = parser.parse_args()
     config = vars(args)

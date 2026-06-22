@@ -4,6 +4,79 @@ import numpy as np
 import torch
 import scipy.sparse as sp
 
+REPRESENTATION_INDEPENDENT = "independent"
+REPRESENTATION_UNIFIED = "unified"
+
+# Preferred (new) folder name first, legacy name second.
+REPRESENTATION_DIRS = {
+    REPRESENTATION_INDEPENDENT: ("Independent", "Naive"),
+    REPRESENTATION_UNIFIED: ("Unified", "NonNaive"),
+}
+
+
+def normalize_representation(config):
+    """Resolve the graph representation into a canonical `representation` key.
+
+    Accepts both the new `representation` key and the legacy boolean `naive`
+    key. The resolved value is written back into `config` and the deprecated
+    `naive` flag is kept in sync so old consumers keep working.
+
+    Priority: explicit `representation` > legacy `naive` > default independent.
+    """
+    representation = config.get('representation')
+
+    if representation is None:
+        if 'naive' in config:
+            representation = REPRESENTATION_INDEPENDENT if config['naive'] else REPRESENTATION_UNIFIED
+        else:
+            representation = REPRESENTATION_INDEPENDENT
+
+    if representation not in REPRESENTATION_DIRS:
+        raise ValueError(
+            f"Unknown representation '{representation}', expected one of {list(REPRESENTATION_DIRS)}"
+        )
+
+    config['representation'] = representation
+    config['naive'] = representation == REPRESENTATION_INDEPENDENT
+    return representation
+
+
+def is_independent(config):
+    return normalize_representation(config) == REPRESENTATION_INDEPENDENT
+
+
+def is_unified(config):
+    return normalize_representation(config) == REPRESENTATION_UNIFIED
+
+
+def legacy_naive(config):
+    """Boolean naive flag for backward-compatible metadata (dual-write)."""
+    return normalize_representation(config) == REPRESENTATION_INDEPENDENT
+
+
+def adjacency_data_dir(dataset_path, representation):
+    """Return the adjacency-matrix subfolder name for a representation.
+
+    Prefers the new folder name (Independent/Unified) and falls back to the
+    legacy name (Naive/NonNaive) when only the old layout exists on disk.
+    """
+    if representation not in REPRESENTATION_DIRS:
+        raise ValueError(
+            f"Unknown representation '{representation}', expected one of {list(REPRESENTATION_DIRS)}"
+        )
+
+    preferred, legacy = REPRESENTATION_DIRS[representation]
+    base = Path(dataset_path)
+    if (base / preferred).is_dir():
+        return preferred
+    if (base / legacy).is_dir():
+        return legacy
+    raise FileNotFoundError(
+        f"No adjacency folder found for representation '{representation}' under {base} "
+        f"(looked for '{preferred}' and '{legacy}')"
+    )
+
+
 def scipy_to_torch_sparse(scp_matrix):
     values = scp_matrix.data
     indices = np.vstack((scp_matrix.row, scp_matrix.col))
@@ -47,11 +120,9 @@ def load_config(dataset_path, hyperparameters = None):
     config['filters'] = [x for x in config['filters'] for _ in (0, 1)]
     config['filters'][0] = 2
     
-    if config['naive']:
-        adj_path = "Naive"
-    else:
-        adj_path = "NonNaive"
-        
+    representation = normalize_representation(config)
+    adj_path = adjacency_data_dir(dataset_path, representation)
+
     print("Loading adjacency matrices", Path(dataset_path) / adj_path / f"adj_full_block_diagonal.npy")
 
     A_ = []

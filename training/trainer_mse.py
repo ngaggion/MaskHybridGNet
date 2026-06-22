@@ -6,6 +6,7 @@ from torch.optim.lr_scheduler import StepLR
 from torch.utils.tensorboard import SummaryWriter
 
 from training.utils import initialize_edge_matrices_and_organ_counts, compute_losses, check_nan
+from models.utils import normalize_representation, legacy_naive
 from losses.dice import OneClassDiceLoss
 from torch.nn import BCELoss 
 import json
@@ -54,7 +55,9 @@ def trainer(train_dataset, val_dataset, model, config, start_epoch, start_iterat
         "name": config['name'],
         "latents": config['latents'],
         "initial_filters": config['initial_filters'],
-        "raster_as_input": config['raster_as_input']
+        "raster_as_input": config['raster_as_input'],
+        "representation": normalize_representation(config),
+        "naive": legacy_naive(config)
     }
     with open(f"{folder}/hyperparameters.json", "w") as f:
         json.dump(hyperparameters, f, indent=4)
