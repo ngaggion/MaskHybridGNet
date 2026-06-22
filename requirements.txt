@@ -1,7 +1,12 @@
 torch==2.0.1
 numpy==1.25.0
-opencv-python==4.8.0.74
+opencv-python-headless==4.8.0.74
 scipy==1.10.1
 torch_geometric==2.3.0
 torchvision
 matplotlib
+tensorboard
+scikit-image
+pandas
+scipy
+seaborn
