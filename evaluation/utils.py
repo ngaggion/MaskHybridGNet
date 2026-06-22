@@ -8,7 +8,7 @@ import pandas as pd
 
 from models.hybridgnet_se_resnext import Hybrid
 from models.hybridgnet_se_resnext_dual import HybridDual
-from models.utils import load_config
+from models.utils import load_config, normalize_representation, is_independent, adjacency_data_dir
 from data.dataset import LandmarksDataset, ToTensor, TestDataset, ToTensorTest, ToTensorWithSeg
 from data.transforms import Scale, ScaleImageOnly
 from torchvision import transforms
@@ -29,11 +29,13 @@ def calculate_metrics(pred, gt):
 
 def eval_test_set(dataset_path, model_path, parameters, results_path, save_masks = False):
     
-    if parameters['naive'] == True:
+    representation = normalize_representation(parameters)
+    if representation == "independent":
         organ_order = None
     else:
         DATASET = dataset_path
-        with open(f"{DATASET}/NonNaive/organ_order_full.json", "r") as f:
+        adj_path = adjacency_data_dir(DATASET, representation)
+        with open(f"{DATASET}/{adj_path}/organ_order_full.json", "r") as f:
             organ_order = json.load(f)
     
     config, D_t, U_t, A_t = load_config(dataset_path, parameters)
@@ -48,10 +50,8 @@ def eval_test_set(dataset_path, model_path, parameters, results_path, save_masks
     
     model.eval()
 
-    if config['naive']:
-        organ_id = np.load(Path(config['DATASET']) / "Naive" / "adj_full_organ_id.npy")[:,0]
-    else:
-        organ_id = np.load(Path(config['DATASET']) / "NonNaive" / "adj_full_organ_id.npy")[:,0]
+    organ_id_path = adjacency_data_dir(config['DATASET'], config['representation'])
+    organ_id = np.load(Path(config['DATASET']) / organ_id_path / "adj_full_organ_id.npy")[:,0]
         
     DATASET = config['DATASET']
     images = np.loadtxt("%s/test.txt"%DATASET, dtype = str)
@@ -139,8 +139,10 @@ def eval_test_set(dataset_path, model_path, parameters, results_path, save_masks
 def predict_test_set(dataset_path, model_path, parameters, results_path, image_list = None, independent = False, landmarks = False):
     DATASET = dataset_path    
     
-    if parameters["naive"]:
-        organ_id = np.load("%s/Naive/adj_full_organ_id.npy" % DATASET)[:,0]
+    representation = normalize_representation(parameters)
+    adj_path = adjacency_data_dir(DATASET, representation)
+    if representation == "independent":
+        organ_id = np.load("%s/%s/adj_full_organ_id.npy" % (DATASET, adj_path))[:,0]
         organ_order = np.unique(organ_id)
         
         circ_organ_order = {}
@@ -149,7 +151,7 @@ def predict_test_set(dataset_path, model_path, parameters, results_path, image_l
             circ_organ_order[str(int(org))] = np.where(organ_id == org)[0].tolist()
     else:
         # Load organ IDs
-        organ_id = np.load("%s/NonNaive/adj_full_organ_id.npy" % DATASET)[:,0]
+        organ_id = np.load("%s/%s/adj_full_organ_id.npy" % (DATASET, adj_path))[:,0]
 
         unique_organs = set()
         for org_str in organ_id:
@@ -160,7 +162,7 @@ def predict_test_set(dataset_path, model_path, parameters, results_path, image_l
         organ_order = sorted(list(unique_organs))
         organ_order = [str(org) for org in organ_order]
         
-        with open(f"{DATASET}/NonNaive/organ_order_full.json", "r") as f:
+        with open(f"{DATASET}/{adj_path}/organ_order_full.json", "r") as f:
             circ_organ_order = json.load(f)
     print("Organ order:", organ_order)
             
@@ -311,11 +313,13 @@ def predict_landmarks_from_seg(dataset_path, model_path, parameters, results_pat
 
 def eval_test_set_xray(dataset_path, model_path, parameters, results_path, save_masks = False):
     
-    if parameters['naive'] == True:
+    representation = normalize_representation(parameters)
+    if representation == "independent":
         organ_order = None
     else:
         DATASET = dataset_path
-        with open(f"{DATASET}/NonNaive/organ_order_full.json", "r") as f:
+        adj_path = adjacency_data_dir(DATASET, representation)
+        with open(f"{DATASET}/{adj_path}/organ_order_full.json", "r") as f:
             organ_order = json.load(f)
     
     config, D_t, U_t, A_t = load_config(dataset_path, parameters)
@@ -334,10 +338,8 @@ def eval_test_set_xray(dataset_path, model_path, parameters, results_path, save_
     
     model.eval()
 
-    if config['naive']:
-        organ_id = np.load(Path(config['DATASET']) / "Naive" / "adj_full_organ_id.npy")[:,0]
-    else:
-        organ_id = np.load(Path(config['DATASET']) / "NonNaive" / "adj_full_organ_id.npy")[:,0]
+    organ_id_path = adjacency_data_dir(config['DATASET'], config['representation'])
+    organ_id = np.load(Path(config['DATASET']) / organ_id_path / "adj_full_organ_id.npy")[:,0]
         
     DATASET = config['DATASET']
     images = np.loadtxt("%s/test.txt"%DATASET, dtype = str)
@@ -437,11 +439,13 @@ def eval_test_set_xray(dataset_path, model_path, parameters, results_path, save_
 
 def eval_test_set_sunnybrook(dataset_path, model_path, parameters, results_path, save_masks = False):
     
-    if parameters['naive'] == True:
+    representation = normalize_representation(parameters)
+    if representation == "independent":
         organ_order = None
     else:
         DATASET = dataset_path
-        with open(f"{DATASET}/NonNaive/organ_order_full.json", "r") as f:
+        adj_path = adjacency_data_dir(DATASET, representation)
+        with open(f"{DATASET}/{adj_path}/organ_order_full.json", "r") as f:
             organ_order = json.load(f)
     
     config, D_t, U_t, A_t = load_config(dataset_path, parameters)
@@ -460,10 +464,8 @@ def eval_test_set_sunnybrook(dataset_path, model_path, parameters, results_path,
     
     model.eval()
 
-    if config['naive']:
-        organ_id = np.load(Path(config['DATASET']) / "Naive" / "adj_full_organ_id.npy")[:,0]
-    else:
-        organ_id = np.load(Path(config['DATASET']) / "NonNaive" / "adj_full_organ_id.npy")[:,0]
+    organ_id_path = adjacency_data_dir(config['DATASET'], config['representation'])
+    organ_id = np.load(Path(config['DATASET']) / organ_id_path / "adj_full_organ_id.npy")[:,0]
         
     DATASET = config['DATASET']
     images = np.loadtxt("%s/test.txt"%DATASET, dtype = str)

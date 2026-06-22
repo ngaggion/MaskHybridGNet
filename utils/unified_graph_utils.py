@@ -2,6 +2,14 @@ import cv2
 import numpy as np
 import networkx as nx
 import json
+from pathlib import Path
+
+UNIFIED_DATA_DIR = "Unified"
+
+
+def unified_data_path(config):
+    """Return the on-disk directory for unified-representation artifacts."""
+    return str(Path(config["output_path"]) / UNIFIED_DATA_DIR)
 
 def build_unified_contour_graph(mask, distance_threshold=1.8):
     """Build a unified contour graph from a multi-organ segmentation mask"""
@@ -265,15 +273,16 @@ def generate_edge_info(config):
     '''
     for block in config["resolutions"]:
         # Load the unified adjacency matrix
-        block_diagonal = np.load(f"{config['output_path']}/adj_{block}_block_diagonal.npy")
+        data_path = unified_data_path(config)
+        block_diagonal = np.load(f"{data_path}/adj_{block}_block_diagonal.npy")
         
         # Find all edges in the graph
         edges = np.argwhere(block_diagonal == 1)
         edges = edges[edges[:, 0] < edges[:, 1]]  # Keep upper triangular only
-        np.save(f"{config['output_path']}/all_edges_{block}.npy", edges)
+        np.save(f"{data_path}/all_edges_{block}.npy", edges)
         
         # Load per-organ contour
-        circular_organ_order = json.load(open(f"{config['output_path']}/organ_order_{block}.json", "r"))
+        circular_organ_order = json.load(open(f"{data_path}/organ_order_{block}.json", "r"))
         
         # Create edge matrix
         N_organs = len(circular_organ_order.keys())
@@ -288,21 +297,22 @@ def generate_edge_info(config):
                 edge_matrix[c, i, 0] = order[i]
                 edge_matrix[c, i, 1] = order[(i + 1) % len(order)]
         
-        np.save(f"{config['output_path']}/edge_matrix_{block}.npy", edge_matrix)
+        np.save(f"{data_path}/edge_matrix_{block}.npy", edge_matrix)
         
 def save_matrices(G, name, config, organ_ids):
     """
     Save matrices for the unified graph representation
     """
+    data_path = unified_data_path(config)
     # Save the adjacency matrix and organ membership
     adj_matrix = nx.to_numpy_array(G)
-    np.save(f"{config['output_path']}/adj_{name}_block_diagonal.npy", adj_matrix)
+    np.save(f"{data_path}/adj_{name}_block_diagonal.npy", adj_matrix)
     
     # Save organ membership as object array
     organ_membership = np.array([G.nodes[node].get('organ_membership', '') for node in G.nodes()])
     organ_id = organ_membership.reshape(-1, 1)
-    np.save(f"{config['output_path']}/adj_{name}_organ_id.npy", organ_id)
-    np.savetxt(f"{config['output_path']}/adj_{name}_organ_id.txt", sorted(organ_ids), fmt="%s")
+    np.save(f"{data_path}/adj_{name}_organ_id.npy", organ_id)
+    np.savetxt(f"{data_path}/adj_{name}_organ_id.txt", sorted(organ_ids), fmt="%s")
     
     organ_id = organ_id.flatten().tolist()
     
@@ -364,7 +374,7 @@ def save_matrices(G, name, config, organ_ids):
             ordered_nodes.append(int(current))
         
         organ_order[organ] = ordered_nodes        
-    with open(f"{config['output_path']}/organ_order_{name}.json", "w") as f:
+    with open(f"{data_path}/organ_order_{name}.json", "w") as f:
         json.dump(organ_order, f, indent=4)
         
     return

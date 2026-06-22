@@ -11,6 +11,7 @@ import numpy as np
 import os 
 import time
 from training.utils import initialize_edge_matrices_and_organ_counts, precompute_edge_adjacency, preprocess_edge_matrix
+from models.utils import is_independent, adjacency_data_dir
 from losses.contour import edge_length_loss
 
 def pretrainer(model, config):
@@ -35,23 +36,25 @@ def pretrainer(model, config):
     folder = os.path.join(tensorboard, config['name'])
     os.makedirs(folder, exist_ok=True)
 
-    if not config['naive']:
+    independent = is_independent(config)
+    adj_path = adjacency_data_dir(DATASET, config['representation'])
+    if not independent:
         # check if atlas exists
-        if not os.path.exists("%s/NonNaive/atlas_image.png" %DATASET):
-            print("Atlas image not found in NonNaive folder. Please run the atlas generation script first.")
+        if not os.path.exists("%s/%s/atlas_image.png" % (DATASET, adj_path)):
+            print(f"Atlas image not found in {adj_path} folder. Please run the atlas generation script first.")
             print("Exiting pretrainer, training will be performed without pretraining.")
             return model
         
-        og_image = cv2.imread("%s/NonNaive/atlas_image.png" %DATASET,0 ).astype('float') / 255.0
-        og_landmarks = np.load("%s/NonNaive/atlas_pos.npy" %DATASET, allow_pickle=True)
+        og_image = cv2.imread("%s/%s/atlas_image.png" % (DATASET, adj_path), 0).astype('float') / 255.0
+        og_landmarks = np.load("%s/%s/atlas_pos.npy" % (DATASET, adj_path), allow_pickle=True)
     else:
-        if not os.path.exists("%s/Naive/atlas_image.png" %DATASET):
-            print("Atlas image not found in NonNaive folder. Please run the atlas generation script first.")
+        if not os.path.exists("%s/%s/atlas_image.png" % (DATASET, adj_path)):
+            print(f"Atlas image not found in {adj_path} folder. Please run the atlas generation script first.")
             print("Exiting pretrainer, training will be performed without pretraining.")
             return model
         
-        og_image = cv2.imread("%s/Naive/atlas_image.png" %DATASET, 0).astype('float') / 255.0
-        og_landmarks = np.load("%s/Naive/atlas_pos.npy" %DATASET, allow_pickle=True)
+        og_image = cv2.imread("%s/%s/atlas_image.png" % (DATASET, adj_path), 0).astype('float') / 255.0
+        og_landmarks = np.load("%s/%s/atlas_pos.npy" % (DATASET, adj_path), allow_pickle=True)
         
     print(f"Image shape: {og_image.shape}")
     print(f"Landmarks shape: {og_landmarks.shape}")
@@ -79,14 +82,14 @@ def pretrainer(model, config):
 
     organs = config['organs']
     
-    if not config['naive']:
-        organ_id = "%s/NonNaive/adj_full_organ_id.npy" %DATASET
+    if not independent:
+        organ_id = "%s/%s/adj_full_organ_id.npy" % (DATASET, adj_path)
         organ_id = np.load(organ_id)[:,0].tolist()
         
-        with open(f"{DATASET}/NonNaive/organ_order_full.json", "r") as f:
+        with open(f"{DATASET}/{adj_path}/organ_order_full.json", "r") as f:
             organ_order = json.load(f)
     else:
-        organ_id = np.load("%s/Naive/adj_full_organ_id.npy" % DATASET)[:,0]       
+        organ_id = np.load("%s/%s/adj_full_organ_id.npy" % (DATASET, adj_path))[:,0]       
         organ_order = {}
         for organ in organs:
             organ_order[organ] = [i for i, id_ in enumerate(organ_id) if id_ == int(organ)]

@@ -360,7 +360,7 @@ class HybridDual(nn.Module):
 
         return x_graph, positions, segmentation
     
-    def raster_naive(self, x, organs, resolution=512):
+    def raster_independent(self, x, organs, resolution=512):
         output = []
 
         B = x.shape[0]
@@ -390,8 +390,16 @@ class HybridDual(nn.Module):
             raster = torch.cat(raster, axis=0)
             raster = raster.reshape(B, -1, resolution, resolution)
         return raster
-    
+
+    # Backward-compatible alias for the legacy "naive" representation.
+    def raster_naive(self, x, organs, resolution=512):
+        return self.raster_independent(x, organs, resolution)
+
+    # Backward-compatible alias for the legacy "non-naive" representation.
     def raster_non_naive(self, x, organs, circ_organ_order, resolution=512):
+        return self.raster_unified(x, organs, circ_organ_order, resolution)
+
+    def raster_unified(self, x, organs, circ_organ_order, resolution=512):
         output = []
         B = x.shape[0]
         

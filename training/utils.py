@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 from losses.contour import edge_length_loss
+from models.utils import adjacency_data_dir, normalize_representation
 from pytorch3d.loss import chamfer_distance
 import json
 
@@ -22,10 +23,7 @@ def initialize_edge_matrices_and_organ_counts(dataset, device, config):
     # append the first resolution to the list of resolutions for deep supervision
     resolutions = [resolutions[0]] + resolutions
     
-    if config['naive']:
-        adj_path = "Naive"
-    else:
-        adj_path = "NonNaive"
+    adj_path = adjacency_data_dir(dataset, normalize_representation(config))
     
     edge_matrices = [load_edge_matrix(f"{dataset}/{adj_path}/edge_matrix_{res}.npy") for res in resolutions]
     
@@ -45,15 +43,15 @@ def initialize_edge_matrices_and_organ_counts(dataset, device, config):
     # Load organ IDs 
     organ_id_arrays = [np.load(f"{dataset}/{adj_path}/adj_{res}_organ_id.npy", allow_pickle=True)[:, 0] for res in resolutions]
     
-    # Check if we're dealing with the naive approach (integer IDs) or strings with hyphens
-    is_naive = config.get('naive', False)
-    if is_naive or not isinstance(organ_id_arrays[0][0], str) or '-' not in ''.join(organ_id_arrays[0].astype(str)):
-        print(f"Using {'naive' if is_naive else 'non-naive'} adjacency matrix")
-        # Original naive approach with integer organ IDs
+    # Check if we're dealing with the independent representation (integer IDs) or strings with hyphens
+    is_independent = config.get('representation') == 'independent' or config.get('naive', False)
+    if is_independent or not isinstance(organ_id_arrays[0][0], str) or '-' not in ''.join(organ_id_arrays[0].astype(str)):
+        print(f"Using {'independent' if is_independent else 'unified'} adjacency matrix")
+        # Independent representation with integer organ IDs
         organ_order, organ_counts = zip(*[np.unique(ids, return_counts=True) for ids in organ_id_arrays])
         return edge_matrices, edge_adjacencies, organ_id_arrays, organ_order[0], list(organ_counts)
     else:
-        print(f"Using {'naive' if is_naive else 'non-naive'} adjacency matrix")
+        print(f"Using {'independent' if is_independent else 'unified'} adjacency matrix")
         # New approach with string organ IDs (shared boundaries)
         # Get unique organ IDs across all nodes
         all_unique_organs = set()
@@ -137,16 +135,16 @@ def precompute_edge_adjacency(em):
 def compute_losses(out_tensors, edge_matrices, organ_order, organ_counts, organ_ids, target, organs_target, counts_target, weights, edge_adjacencies):    
     total_losses = {name: 0.0 for name in weights}
     
-    # Check if we're dealing with the naive approach or shared boundaries
-    is_naive = not isinstance(organ_ids[0][0], str) or '-' not in ''.join(organ_ids[0].astype(str))
+    # Check if we're dealing with the independent representation or shared boundaries (unified)
+    is_independent = not isinstance(organ_ids[0][0], str) or '-' not in ''.join(organ_ids[0].astype(str))
     
     for out_tensor, edge_matrix, organ_count, organ_id, edge_adj in zip(out_tensors, edge_matrices, organ_counts, organ_ids, edge_adjacencies):
         average_edge, elasticity, curvature = edge_length_loss(out_tensor, edge_matrix, edge_adj)
         
         B = out_tensor.shape[0]
         
-        if is_naive:
-            # Original implementation for naive approach - UNCHANGED
+        if is_independent:
+            # Original implementation for the independent representation - UNCHANGED
             tensor = torch.zeros((B * organ_count.shape[0], organ_count.max(), 2), device=out_tensor.device)
             for b in range(B):
                 for i in range(organ_count.shape[0]):
@@ -181,7 +179,7 @@ def compute_losses(out_tensors, edge_matrices, organ_order, organ_counts, organ_
             for organ in organs_target[b].numpy().tolist():
                 sizes_target.append(counts_target[b][idx])
                 
-                if is_naive:
+                if is_independent:
                     try:
                         order = np.where(organ_order == organ)[0][0]
                         sizes_pred.append(organ_count[order])
