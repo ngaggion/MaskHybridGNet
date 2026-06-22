@@ -6,6 +6,10 @@ import torchvision.ops.roi_align as roi_align
 from losses.diff_ras.polygon import SoftPolygon
 import numpy as np
 
+import warnings
+warnings.filterwarnings("ignore")
+
+
 class SEBlock(nn.Module):
     def __init__(self, channel, reduction=16):
         super(SEBlock, self).__init__()
